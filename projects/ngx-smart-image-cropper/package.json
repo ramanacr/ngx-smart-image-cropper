@@ -28,8 +28,7 @@
   "exports": {
     ".": {
       "import": "./fesm2020/ngx-smart-image-cropper.mjs",
-      "require": "./bundles/ngx-smart-image-cropper.umd.js",
-      "types": "./ngx-smart-image-cropper.d.ts"
+      "require": "./bundles/ngx-smart-image-cropper.umd.js"
     }
   }
 }
