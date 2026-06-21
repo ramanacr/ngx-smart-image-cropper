@@ -11,6 +11,7 @@ export class App {
   readonly imageUrl = signal('');
   readonly aspectRatio = signal(1);
   readonly circularCrop = signal(false);
+  readonly maxExportSize = signal<number | null>(256);
   readonly zoom = signal(1);
   readonly lastCrop = signal<CropChangedEvent | null>(null);
   readonly exportUrl = signal('');
@@ -41,6 +42,17 @@ export class App {
     if (Number.isFinite(nextZoom)) {
       this.zoom.set(nextZoom);
     }
+  }
+
+  setMaxExportSize(value: string): void {
+    const normalized = value.trim();
+    if (!normalized) {
+      this.maxExportSize.set(null);
+      return;
+    }
+
+    const nextSize = Number(normalized);
+    this.maxExportSize.set(Number.isFinite(nextSize) && nextSize > 0 ? nextSize : null);
   }
 
   handleCropChanged(event: CropChangedEvent): void {

@@ -56,12 +56,25 @@
           (input)="setZoom($any($event.target).value)"
         />
       </label>
+
+      <label>
+        Max export size
+        <input
+          type="number"
+          min="1"
+          step="1"
+          data-agent-control="max-export-size"
+          [value]="maxExportSize() ?? ''"
+          (input)="setMaxExportSize($any($event.target).value)"
+        />
+      </label>
     </form>
 
     <ngx-smart-image-cropper
       [imageUrl]="imageUrl()"
       [aspectRatio]="aspectRatio()"
       [circularCrop]="circularCrop()"
+      [maxExportSize]="maxExportSize()"
       [zoom]="zoom()"
       (cropChanged)="handleCropChanged($event)"
       (cropped)="handleCropped($event)"
@@ -86,6 +99,10 @@
           <div>
             <dt>Zoom</dt>
             <dd>{{ crop.state.zoom }}</dd>
+          </div>
+          <div>
+            <dt>Max export</dt>
+            <dd>{{ maxExportSize() ?? 'Original crop size' }}</dd>
           </div>
         </dl>
       } @else {

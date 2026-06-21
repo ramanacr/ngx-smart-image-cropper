@@ -42,7 +42,7 @@ interface PointerPoint {
 
 interface PointerInteraction {
   readonly kind: 'draw' | 'move' | 'resize';
-  readonly pointerId: number;
+  readonly contactId: number;
   readonly start: PointerPoint;
   readonly initialCrop: CropRect;
   readonly handle?: ResizeHandle;
@@ -68,6 +68,10 @@ interface PointerInteraction {
         (pointermove)="continuePointerInteraction($event)"
         (pointerup)="finishPointerInteraction($event)"
         (pointercancel)="finishPointerInteraction($event)"
+        (touchstart)="startTouchDraw($event)"
+        (touchmove)="continueTouchInteraction($event)"
+        (touchend)="finishTouchInteraction($event)"
+        (touchcancel)="finishTouchInteraction($event)"
       >
         @if (displayImageUrl(); as source) {
           <img
@@ -92,6 +96,7 @@ interface PointerInteraction {
           [style.aspect-ratio]="selectionAspectRatio()"
           [class.cropper__selection--circle]="circularCrop()"
           (pointerdown)="startMove($event)"
+          (touchstart)="startTouchMove($event)"
         >
           @for (handle of resizeHandles; track handle) {
             <button
@@ -100,6 +105,7 @@ interface PointerInteraction {
               [attr.data-agent-handle]="handle"
               [attr.aria-label]="'Resize crop ' + handle"
               (pointerdown)="startResize($event, handle)"
+              (touchstart)="startTouchResize($event, handle)"
             ></button>
           }
         </div>
@@ -145,6 +151,8 @@ interface PointerInteraction {
   styles: `
     :host {
       display: block;
+      --cropper-handle-size: 0.875rem;
+      --cropper-handle-offset: -0.5rem;
       color: #17202a;
       font-family:
         Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -198,8 +206,8 @@ interface PointerInteraction {
 
     .cropper__handle {
       position: absolute;
-      width: 0.875rem;
-      height: 0.875rem;
+      width: var(--cropper-handle-size);
+      height: var(--cropper-handle-size);
       padding: 0;
       min-height: 0;
       border: 2px solid #111827;
@@ -209,50 +217,50 @@ interface PointerInteraction {
     }
 
     .cropper__handle--n {
-      top: -0.5rem;
-      left: calc(50% - 0.4375rem);
+      top: var(--cropper-handle-offset);
+      left: calc(50% - (var(--cropper-handle-size) / 2));
       cursor: ns-resize;
     }
 
     .cropper__handle--ne {
-      top: -0.5rem;
-      right: -0.5rem;
+      top: var(--cropper-handle-offset);
+      right: var(--cropper-handle-offset);
       cursor: nesw-resize;
     }
 
     .cropper__handle--e {
-      top: calc(50% - 0.4375rem);
-      right: -0.5rem;
+      top: calc(50% - (var(--cropper-handle-size) / 2));
+      right: var(--cropper-handle-offset);
       cursor: ew-resize;
     }
 
     .cropper__handle--se {
-      right: -0.5rem;
-      bottom: -0.5rem;
+      right: var(--cropper-handle-offset);
+      bottom: var(--cropper-handle-offset);
       cursor: nwse-resize;
     }
 
     .cropper__handle--s {
-      bottom: -0.5rem;
-      left: calc(50% - 0.4375rem);
+      bottom: var(--cropper-handle-offset);
+      left: calc(50% - (var(--cropper-handle-size) / 2));
       cursor: ns-resize;
     }
 
     .cropper__handle--sw {
-      bottom: -0.5rem;
-      left: -0.5rem;
+      bottom: var(--cropper-handle-offset);
+      left: var(--cropper-handle-offset);
       cursor: nesw-resize;
     }
 
     .cropper__handle--w {
-      top: calc(50% - 0.4375rem);
-      left: -0.5rem;
+      top: calc(50% - (var(--cropper-handle-size) / 2));
+      left: var(--cropper-handle-offset);
       cursor: ew-resize;
     }
 
     .cropper__handle--nw {
-      top: -0.5rem;
-      left: -0.5rem;
+      top: var(--cropper-handle-offset);
+      left: var(--cropper-handle-offset);
       cursor: nwse-resize;
     }
 
@@ -282,6 +290,13 @@ interface PointerInteraction {
       text-align: center;
       font-variant-numeric: tabular-nums;
     }
+
+    @media (pointer: coarse) {
+      :host {
+        --cropper-handle-size: 1.25rem;
+        --cropper-handle-offset: -0.625rem;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -290,6 +305,7 @@ export class NgxSmartImageCropper {
   readonly imageUrl = input<string | null>(null);
   readonly aspectRatio = input<number | null>(null);
   readonly circularCrop = input(false);
+  readonly maxExportSize = input<number | null>(null);
   readonly zoom = input(1);
 
   readonly cropped = output<CroppedImageEvent>();
@@ -410,7 +426,7 @@ export class NgxSmartImageCropper {
 
   protected async exportCrop(): Promise<void> {
     const canvas = this.createSourceCanvas();
-    const blob = await this.exportService.exportBlob(canvas, this.state());
+    const blob = await this.exportService.exportBlob(canvas, this.state(), 'image/png', this.maxExportSize());
     this.cropped.emit({ blob, state: this.state() });
   }
 
@@ -435,7 +451,7 @@ export class NgxSmartImageCropper {
 
     this.startPointerInteraction(event, {
       kind: 'draw',
-      pointerId: event.pointerId,
+      contactId: event.pointerId,
       start: point,
       initialCrop: this.state().crop,
     });
@@ -451,7 +467,7 @@ export class NgxSmartImageCropper {
 
     this.startPointerInteraction(event, {
       kind: 'move',
-      pointerId: event.pointerId,
+      contactId: event.pointerId,
       start: point,
       initialCrop: this.state().crop,
     });
@@ -466,7 +482,76 @@ export class NgxSmartImageCropper {
 
     this.startPointerInteraction(event, {
       kind: 'resize',
-      pointerId: event.pointerId,
+      contactId: event.pointerId,
+      start: point,
+      initialCrop: this.state().crop,
+      handle,
+    });
+  }
+
+  protected startTouchDraw(event: TouchEvent): void {
+    if (this.supportsPointerEvents()) {
+      return;
+    }
+
+    if (!(event.target instanceof HTMLElement) || !event.target.closest('.cropper__stage')) {
+      return;
+    }
+
+    if (event.target.closest('[data-agent-id="crop-selection"]')) {
+      return;
+    }
+
+    const touch = this.getTrackedTouch(event);
+    const point = this.touchToImagePoint(event, touch?.identifier);
+    if (!touch || !point) {
+      return;
+    }
+
+    this.startTouchInteraction(event, {
+      kind: 'draw',
+      contactId: touch.identifier,
+      start: point,
+      initialCrop: this.state().crop,
+    });
+    this.replaceCrop(this.rectFromPoints(point, point));
+  }
+
+  protected startTouchMove(event: TouchEvent): void {
+    if (this.supportsPointerEvents()) {
+      return;
+    }
+
+    event.stopPropagation();
+    const touch = this.getTrackedTouch(event);
+    const point = this.touchToImagePoint(event, touch?.identifier);
+    if (!touch || !point) {
+      return;
+    }
+
+    this.startTouchInteraction(event, {
+      kind: 'move',
+      contactId: touch.identifier,
+      start: point,
+      initialCrop: this.state().crop,
+    });
+  }
+
+  protected startTouchResize(event: TouchEvent, handle: ResizeHandle): void {
+    if (this.supportsPointerEvents()) {
+      return;
+    }
+
+    event.stopPropagation();
+    const touch = this.getTrackedTouch(event);
+    const point = this.touchToImagePoint(event, touch?.identifier);
+    if (!touch || !point) {
+      return;
+    }
+
+    this.startTouchInteraction(event, {
+      kind: 'resize',
+      contactId: touch.identifier,
       start: point,
       initialCrop: this.state().crop,
       handle,
@@ -475,7 +560,7 @@ export class NgxSmartImageCropper {
 
   protected continuePointerInteraction(event: PointerEvent): void {
     const interaction = this.pointerInteraction;
-    if (!interaction || interaction.pointerId !== event.pointerId) {
+    if (!interaction || interaction.contactId !== event.pointerId) {
       return;
     }
 
@@ -500,7 +585,7 @@ export class NgxSmartImageCropper {
   }
 
   protected finishPointerInteraction(event: PointerEvent): void {
-    if (this.pointerInteraction?.pointerId !== event.pointerId) {
+    if (this.pointerInteraction?.contactId !== event.pointerId) {
       return;
     }
 
@@ -509,6 +594,50 @@ export class NgxSmartImageCropper {
     if (stage?.hasPointerCapture(event.pointerId)) {
       stage.releasePointerCapture(event.pointerId);
     }
+  }
+
+  protected continueTouchInteraction(event: TouchEvent): void {
+    if (this.supportsPointerEvents()) {
+      return;
+    }
+
+    const interaction = this.pointerInteraction;
+    if (!interaction || !this.getTrackedTouch(event, interaction.contactId)) {
+      return;
+    }
+
+    const point = this.touchToImagePoint(event, interaction.contactId);
+    if (!point) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (interaction.kind === 'draw') {
+      this.replaceCrop(this.rectFromPoints(interaction.start, point));
+      return;
+    }
+
+    if (interaction.kind === 'move') {
+      this.replaceCrop(this.movedCrop(interaction.initialCrop, interaction.start, point));
+      return;
+    }
+
+    this.replaceCrop(this.resizedCrop(interaction.initialCrop, interaction.start, point, interaction.handle));
+  }
+
+  protected finishTouchInteraction(event: TouchEvent): void {
+    if (this.supportsPointerEvents()) {
+      return;
+    }
+
+    const interaction = this.pointerInteraction;
+    if (!interaction || !this.getTrackedTouch(event, interaction.contactId)) {
+      return;
+    }
+
+    event.preventDefault();
+    this.pointerInteraction = null;
   }
 
   protected handleKeydown(event: KeyboardEvent): void {
@@ -534,15 +663,24 @@ export class NgxSmartImageCropper {
 
   private startPointerInteraction(event: PointerEvent, interaction: PointerInteraction): void {
     event.preventDefault();
+    this.beginInteraction(interaction);
+
+    const stage = this.getStageElement(event);
+    stage?.setPointerCapture(event.pointerId);
+  }
+
+  private startTouchInteraction(event: TouchEvent, interaction: PointerInteraction): void {
+    event.preventDefault();
+    this.beginInteraction(interaction);
+  }
+
+  private beginInteraction(interaction: PointerInteraction): void {
     this.pointerInteraction = interaction;
     this.state.update((state) => ({
       ...state,
       history: [...state.history, state.crop],
       future: [],
     }));
-
-    const stage = this.getStageElement(event);
-    stage?.setPointerCapture(event.pointerId);
   }
 
   private pointerToImagePoint(event: PointerEvent): PointerPoint | null {
@@ -560,7 +698,14 @@ export class NgxSmartImageCropper {
   }
 
   private getStageElement(event: PointerEvent): HTMLElement | null {
-    const current = event.currentTarget;
+    return this.getStageElementFromCurrentTarget(event.currentTarget);
+  }
+
+  private getTouchStageElement(event: TouchEvent): HTMLElement | null {
+    return this.getStageElementFromCurrentTarget(event.currentTarget);
+  }
+
+  private getStageElementFromCurrentTarget(current: EventTarget | null): HTMLElement | null {
     if (!(current instanceof HTMLElement)) {
       return null;
     }
@@ -570,6 +715,43 @@ export class NgxSmartImageCropper {
     }
 
     return current.closest<HTMLElement>('[data-agent-id="crop-stage"]');
+  }
+
+  private touchToImagePoint(event: TouchEvent, identifier: number | undefined): PointerPoint | null {
+    const stage = this.getTouchStageElement(event);
+    const touch = this.getTrackedTouch(event, identifier);
+    if (!stage || !touch) {
+      return null;
+    }
+
+    const rect = stage.getBoundingClientRect();
+    const state = this.state();
+    return {
+      x: this.clamp(((touch.clientX - rect.left) / rect.width) * state.imageSize.width, 0, state.imageSize.width),
+      y: this.clamp(((touch.clientY - rect.top) / rect.height) * state.imageSize.height, 0, state.imageSize.height),
+    };
+  }
+
+  private getTrackedTouch(event: TouchEvent, identifier?: number): Touch | null {
+    const pools = [event.changedTouches, event.touches, event.targetTouches];
+    for (const pool of pools) {
+      for (let index = 0; index < pool.length; index += 1) {
+        const touch = pool.item(index);
+        if (!touch) {
+          continue;
+        }
+
+        if (identifier === undefined || touch.identifier === identifier) {
+          return touch;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private supportsPointerEvents(): boolean {
+    return typeof PointerEvent !== 'undefined';
   }
 
   private rectFromPoints(start: PointerPoint, end: PointerPoint): CropRect {
@@ -595,6 +777,11 @@ export class NgxSmartImageCropper {
     end: PointerPoint,
     handle: ResizeHandle | undefined,
   ): CropRect {
+    const ratio = this.effectiveAspectRatio();
+    if (ratio && handle) {
+      return this.resizedCropWithAspectRatio(initialCrop, end, handle, ratio);
+    }
+
     const deltaX = end.x - start.x;
     const deltaY = end.y - start.y;
     let { x, y, width, height } = initialCrop;
@@ -618,6 +805,90 @@ export class NgxSmartImageCropper {
     height = Math.max(height, 20);
 
     return this.withAspectRatio({ x, y, width, height }, start, end);
+  }
+
+  private resizedCropWithAspectRatio(
+    initialCrop: CropRect,
+    end: PointerPoint,
+    handle: ResizeHandle,
+    ratio: number,
+  ): CropRect {
+    const imageSize = this.state().imageSize;
+    const minWidth = 20;
+    const minHeight = 20;
+    const minRatioWidth = Math.max(minWidth, minHeight * ratio);
+    const minRatioHeight = minRatioWidth / ratio;
+    const right = initialCrop.x + initialCrop.width;
+    const bottom = initialCrop.y + initialCrop.height;
+    const centerX = initialCrop.x + initialCrop.width / 2;
+    const centerY = initialCrop.y + initialCrop.height / 2;
+
+    let widthFromPointer = initialCrop.width;
+    let heightFromPointer = initialCrop.height;
+    let maxWidth = imageSize.width;
+    let maxHeight = imageSize.height;
+    let x = initialCrop.x;
+    let y = initialCrop.y;
+
+    if (handle === 'e') {
+      widthFromPointer = Math.max(end.x - initialCrop.x, minRatioWidth);
+      maxWidth = imageSize.width - initialCrop.x;
+      maxHeight = 2 * Math.min(centerY, imageSize.height - centerY);
+    } else if (handle === 'w') {
+      widthFromPointer = Math.max(right - end.x, minRatioWidth);
+      maxWidth = right;
+      maxHeight = 2 * Math.min(centerY, imageSize.height - centerY);
+    } else if (handle === 's') {
+      heightFromPointer = Math.max(end.y - initialCrop.y, minRatioHeight);
+      maxWidth = 2 * Math.min(centerX, imageSize.width - centerX);
+      maxHeight = imageSize.height - initialCrop.y;
+    } else if (handle === 'n') {
+      heightFromPointer = Math.max(bottom - end.y, minRatioHeight);
+      maxWidth = 2 * Math.min(centerX, imageSize.width - centerX);
+      maxHeight = bottom;
+    } else if (handle === 'se') {
+      widthFromPointer = Math.max(end.x - initialCrop.x, minRatioWidth);
+      heightFromPointer = Math.max(end.y - initialCrop.y, minRatioHeight);
+      maxWidth = imageSize.width - initialCrop.x;
+      maxHeight = imageSize.height - initialCrop.y;
+    } else if (handle === 'sw') {
+      widthFromPointer = Math.max(right - end.x, minRatioWidth);
+      heightFromPointer = Math.max(end.y - initialCrop.y, minRatioHeight);
+      maxWidth = right;
+      maxHeight = imageSize.height - initialCrop.y;
+    } else if (handle === 'ne') {
+      widthFromPointer = Math.max(end.x - initialCrop.x, minRatioWidth);
+      heightFromPointer = Math.max(bottom - end.y, minRatioHeight);
+      maxWidth = imageSize.width - initialCrop.x;
+      maxHeight = bottom;
+    } else if (handle === 'nw') {
+      widthFromPointer = Math.max(right - end.x, minRatioWidth);
+      heightFromPointer = Math.max(bottom - end.y, minRatioHeight);
+      maxWidth = right;
+      maxHeight = bottom;
+    }
+
+    let width =
+      handle === 'n' || handle === 's'
+        ? Math.max(heightFromPointer * ratio, minRatioWidth)
+        : Math.max(widthFromPointer, heightFromPointer * ratio, minRatioWidth);
+
+    width = Math.min(width, maxWidth, maxHeight * ratio);
+    const height = width / ratio;
+
+    if (handle.includes('w')) {
+      x = right - width;
+    } else if (handle === 'n' || handle === 's') {
+      x = centerX - width / 2;
+    }
+
+    if (handle.includes('n')) {
+      y = bottom - height;
+    } else if (handle === 'e' || handle === 'w') {
+      y = centerY - height / 2;
+    }
+
+    return { x, y, width, height };
   }
 
   private withAspectRatio(crop: CropRect, start: PointerPoint, end: PointerPoint): CropRect {

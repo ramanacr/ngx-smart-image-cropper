@@ -10,11 +10,13 @@ export class ExportService {
     source: HTMLCanvasElement,
     state: CropState,
     mimeType: CropExportMimeType = 'image/png',
+    maxExportSize?: number | null,
     quality = 0.92,
   ): Promise<Blob> {
+    const exportSize = this.resolveExportSize(state, maxExportSize);
     const canvas = document.createElement('canvas');
-    canvas.width = state.crop.width;
-    canvas.height = state.crop.height;
+    canvas.width = exportSize.width;
+    canvas.height = exportSize.height;
 
     const context = canvas.getContext('2d');
     if (!context) {
@@ -29,8 +31,8 @@ export class ExportService {
       state.crop.height,
       0,
       0,
-      state.crop.width,
-      state.crop.height,
+      exportSize.width,
+      exportSize.height,
     );
 
     return new Promise<Blob>((resolve, reject) => {
@@ -54,8 +56,9 @@ export class ExportService {
     state: CropState,
     fileName = 'cropped-image.png',
     mimeType: CropExportMimeType = 'image/png',
+    maxExportSize?: number | null,
   ): Promise<File> {
-    const blob = await this.exportBlob(source, state, mimeType);
+    const blob = await this.exportBlob(source, state, mimeType, maxExportSize);
     return new File([blob], fileName, { type: mimeType });
   }
 
@@ -63,13 +66,41 @@ export class ExportService {
     source: HTMLCanvasElement,
     state: CropState,
     mimeType: CropExportMimeType = 'image/png',
+    maxExportSize?: number | null,
   ): Promise<string> {
-    const blob = await this.exportBlob(source, state, mimeType);
+    const blob = await this.exportBlob(source, state, mimeType, maxExportSize);
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.addEventListener('load', () => resolve(String(reader.result)));
       reader.addEventListener('error', () => reject(reader.error));
       reader.readAsDataURL(blob);
     });
+  }
+
+  private resolveExportSize(
+    state: CropState,
+    maxExportSize?: number | null,
+  ): { width: number; height: number } {
+    const requestedSize = Number(maxExportSize);
+    if (!Number.isFinite(requestedSize) || requestedSize <= 0) {
+      return {
+        width: state.crop.width,
+        height: state.crop.height,
+      };
+    }
+
+    const longestSide = Math.max(state.crop.width, state.crop.height);
+    if (longestSide <= 0) {
+      return {
+        width: state.crop.width,
+        height: state.crop.height,
+      };
+    }
+
+    const scale = requestedSize / longestSide;
+    return {
+      width: Math.max(1, Math.round(state.crop.width * scale)),
+      height: Math.max(1, Math.round(state.crop.height * scale)),
+    };
   }
 }

@@ -1,5 +1,53 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import path from 'node:path';
+
+async function performTouchDrag(
+  page: Page,
+  startSelector: string,
+  moveSelector: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  steps = 8,
+): Promise<void> {
+  const startTarget = page.locator(startSelector);
+  const moveTarget = page.locator(moveSelector);
+  const pointerBase = {
+    pointerId: 1,
+    pointerType: 'touch' as const,
+    isPrimary: true,
+    button: 0,
+    width: 24,
+    height: 24,
+  };
+
+  await startTarget.dispatchEvent('pointerdown', {
+    ...pointerBase,
+    buttons: 1,
+    pressure: 0.75,
+    clientX: start.x,
+    clientY: start.y,
+  });
+
+  for (let step = 1; step <= steps; step += 1) {
+    const progress = step / steps;
+    await moveTarget.dispatchEvent('pointermove', {
+      ...pointerBase,
+      buttons: 1,
+      pressure: 0.75,
+      clientX: start.x + (end.x - start.x) * progress,
+      clientY: start.y + (end.y - start.y) * progress,
+    });
+  }
+
+  await moveTarget.dispatchEvent('pointerup', {
+    ...pointerBase,
+    buttons: 0,
+    pressure: 0,
+    clientX: end.x,
+    clientY: end.y,
+  });
+}
 
 test('demo exposes cropper controls and metadata', async ({ page }) => {
   await page.goto('/');
@@ -84,4 +132,82 @@ test('crop selection can be drawn, moved, and resized with the mouse', async ({ 
 
   const resizedBox = await selection.boundingBox();
   expect(resizedBox?.width).toBeGreaterThan(movedBox?.width ?? 0);
+});
+
+test.describe('mobile touch interactions', () => {
+  test.setTimeout(20_000);
+
+  test.use({
+    viewport: { width: 412, height: 915 },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  test('crop selection can be drawn, moved, and resized with touch', async ({ page }) => {
+    await page.goto('/');
+
+    await page
+      .locator('[data-agent-control="image-file"]')
+      .setInputFiles(path.join(process.cwd(), 'e2e/fixtures/sample.svg'));
+
+    const stage = page.locator('[data-agent-id="crop-stage"]');
+    const selection = page.locator('[data-agent-id="crop-selection"]');
+    const southeastHandle = page.locator('[data-agent-handle="se"]');
+
+    await expect(stage).toBeVisible();
+    const stageBox = await stage.boundingBox();
+    if (!stageBox) {
+      throw new Error('Crop stage is not visible.');
+    }
+
+    await performTouchDrag(
+      page,
+      '[data-agent-id="crop-stage"]',
+      '[data-agent-id="crop-stage"]',
+      { x: stageBox.x + 24, y: stageBox.y + 88 },
+      { x: stageBox.x + 220, y: stageBox.y + 280 },
+    );
+
+    const drawnBox = await selection.boundingBox();
+    expect(drawnBox?.width).toBeGreaterThan(80);
+
+    await performTouchDrag(
+      page,
+      '[data-agent-id="crop-selection"]',
+      '[data-agent-id="crop-stage"]',
+      {
+        x: (drawnBox?.x ?? 0) + (drawnBox?.width ?? 0) / 2,
+        y: (drawnBox?.y ?? 0) + (drawnBox?.height ?? 0) / 2,
+      },
+      {
+        x: (drawnBox?.x ?? 0) + (drawnBox?.width ?? 0) / 2 + 45,
+        y: (drawnBox?.y ?? 0) + (drawnBox?.height ?? 0) / 2 + 35,
+      },
+    );
+
+    const movedBox = await selection.boundingBox();
+    expect(movedBox?.x).toBeGreaterThan(drawnBox?.x ?? 0);
+
+    const resizeBox = await southeastHandle.boundingBox();
+    if (!resizeBox) {
+      throw new Error('Resize handle is not visible.');
+    }
+
+    await performTouchDrag(
+      page,
+      '[data-agent-handle="se"]',
+      '[data-agent-id="crop-stage"]',
+      {
+        x: resizeBox.x + resizeBox.width / 2,
+        y: resizeBox.y + resizeBox.height / 2,
+      },
+      {
+        x: resizeBox.x + resizeBox.width / 2 + 40,
+        y: resizeBox.y + resizeBox.height / 2 + 40,
+      },
+    );
+
+    const resizedBox = await selection.boundingBox();
+    expect(resizedBox?.width).toBeGreaterThan(movedBox?.width ?? 0);
+  });
 });
