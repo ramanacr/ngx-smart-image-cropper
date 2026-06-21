@@ -1,6 +1,13 @@
 {
-  "name": "ngx-smart-image-cropper-workspace",
-  "version": "0.0.0",
+  "name": "@ramanacr/ngx-smart-image-cropper-workspace",
+  "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ramanacr/ngx-smart-image-cropper"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve demo",
@@ -13,7 +20,7 @@
     "test:demo": "ng test demo --watch=false",
     "e2e": "playwright test"
   },
-  "private": true,
+  "private": false,
   "packageManager": "npm@11.6.4",
   "dependencies": {
     "@angular/common": "^21.2.0",
