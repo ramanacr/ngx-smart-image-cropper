@@ -20,5 +20,16 @@
   "publishConfig": {
     "access": "public"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "main": "bundles/ngx-smart-image-cropper.umd.js",
+  "module": "fesm2020/ngx-smart-image-cropper.mjs",
+  "es2020": "fesm2020/ngx-smart-image-cropper.mjs",
+  "types": "ngx-smart-image-cropper.d.ts",
+  "exports": {
+    ".": {
+      "import": "./fesm2020/ngx-smart-image-cropper.mjs",
+      "require": "./bundles/ngx-smart-image-cropper.umd.js",
+      "types": "./ngx-smart-image-cropper.d.ts"
+    }
+  }
 }
