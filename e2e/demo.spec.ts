@@ -21,6 +21,7 @@ async function performTouchDrag(
     height: 24,
   };
 
+  // Dispatch pointerdown to the element where the touch starts.
   await startTarget.dispatchEvent('pointerdown', {
     ...pointerBase,
     buttons: 1,
@@ -29,24 +30,36 @@ async function performTouchDrag(
     clientY: start.y,
   });
 
+  // Small pause to allow the app to call setPointerCapture / register handlers.
+  await page.waitForTimeout(16);
+
+  // Deliver pointermove events to the same element that received pointerdown.
+  // Many components rely on pointer capture, so moving events to a different element
+  // can cause the target component to ignore moves.
   for (let step = 1; step <= steps; step += 1) {
     const progress = step / steps;
-    await moveTarget.dispatchEvent('pointermove', {
+    await startTarget.dispatchEvent('pointermove', {
       ...pointerBase,
       buttons: 1,
       pressure: 0.75,
-      clientX: start.x + (end.x - start.x) * progress,
-      clientY: start.y + (end.y - start.y) * progress,
+      clientX: Math.round(start.x + (end.x - start.x) * progress),
+      clientY: Math.round(start.y + (end.y - start.y) * progress),
     });
+    // brief pause to better emulate real touch movement
+    await page.waitForTimeout(8);
   }
 
-  await moveTarget.dispatchEvent('pointerup', {
+  // End with pointerup on the same element.
+  await startTarget.dispatchEvent('pointerup', {
     ...pointerBase,
     buttons: 0,
     pressure: 0,
     clientX: end.x,
     clientY: end.y,
   });
+
+  // Allow the UI a moment to update
+  await page.waitForTimeout(10);
 }
 
 test('demo exposes cropper controls and metadata', async ({ page }) => {

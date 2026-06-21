@@ -1,5 +1,5 @@
 {
-  "name": "@ramanacr/ngx-smart-image-cropper-workspace",
+  "name": "@ramanacr/ngx-smart-image-cropper",
   "version": "0.0.1",
   "publishConfig": {
     "access": "public"
