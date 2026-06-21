@@ -15,7 +15,7 @@ Angular 21 standalone image cropper library.
 ## Usage
 
 ```ts
-import { NgxSmartImageCropper } from 'ngx-smart-image-cropper';
+import { NgxSmartImageCropper } from '@ramanacr/ngx-smart-image-cropper';
 ```
 
 ```html

@@ -1,5 +1,5 @@
 import { Component, signal } from '@angular/core';
-import { NgxSmartImageCropper, CropChangedEvent, CroppedImageEvent } from 'ngx-smart-image-cropper';
+import { NgxSmartImageCropper, CropChangedEvent, CroppedImageEvent } from '@ramanacr/ngx-smart-image-cropper';
 
 @Component({
   selector: 'app-root',

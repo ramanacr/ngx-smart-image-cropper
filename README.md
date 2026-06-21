@@ -1,6 +1,6 @@
 # ngx-smart-image-cropper
 
-`ngx-smart-image-cropper` is an Angular 21 standalone image cropper with signal-backed state,
+`@ramanacr/ngx-smart-image-cropper` is an Angular 21 standalone image cropper with signal-backed state,
 mouse and touch interactions, keyboard nudging, undo/redo history, and canvas-based export.
 
 This repository contains both:
@@ -110,7 +110,7 @@ npx playwright install chromium
 After publishing to npm, install it in a consumer app with:
 
 ```bash
-npm install ngx-smart-image-cropper
+npm install @ramanacr/ngx-smart-image-cropper
 ```
 
 The package exposes standalone Angular APIs, so you can import the component directly into a
@@ -126,7 +126,7 @@ import {
   CropChangedEvent,
   CroppedImageEvent,
   NgxSmartImageCropper,
-} from 'ngx-smart-image-cropper';
+} from '@ramanacr/ngx-smart-image-cropper';
 
 @Component({
   selector: 'app-cropper-page',
@@ -292,7 +292,7 @@ If you need programmatic export logic outside the component event flow, inject `
 
 ```ts
 import { inject } from '@angular/core';
-import { ExportService, CropState } from 'ngx-smart-image-cropper';
+import { ExportService, CropState } from '@ramanacr/ngx-smart-image-cropper';
 
 export class CropExportFacade {
   private readonly exportService = inject(ExportService);

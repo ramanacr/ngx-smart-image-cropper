@@ -1,5 +1,5 @@
 {
-  "name": "ngx-smart-image-cropper",
+  "name": "@ramanacr/ngx-smart-image-cropper",
   "version": "0.0.1",
   "description": "Angular 21 standalone image cropper with signal state, keyboard controls, and canvas export.",
   "license": "MIT",

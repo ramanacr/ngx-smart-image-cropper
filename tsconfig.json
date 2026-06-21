@@ -8,7 +8,7 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "paths": {
-      "ngx-smart-image-cropper": ["./projects/ngx-smart-image-cropper/src/public-api.ts"]
+      "@ramanacr/ngx-smart-image-cropper": ["./projects/ngx-smart-image-cropper/src/public-api.ts"]
     },
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
