@@ -1,0 +1,21 @@
+{
+  "name": "ngx-smart-image-cropper",
+  "version": "0.0.1",
+  "description": "Angular 21 standalone image cropper with signal state, keyboard controls, and canvas export.",
+  "license": "MIT",
+  "keywords": [
+    "angular",
+    "image-cropper",
+    "signals",
+    "canvas",
+    "standalone"
+  ],
+  "peerDependencies": {
+    "@angular/common": "^21.2.0",
+    "@angular/core": "^21.2.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

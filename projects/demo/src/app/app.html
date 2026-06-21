@@ -1,0 +1,100 @@
+<main class="demo" data-page-kind="demo" data-agent-workflow="image-cropping-demo">
+  <header class="demo__header">
+    <div>
+      <p class="demo__eyebrow">Angular 21 standalone library</p>
+      <h1>ngx-smart-image-cropper</h1>
+    </div>
+    <a href="https://www.npmjs.com/package/ngx-smart-image-cropper" rel="noopener" target="_blank">
+      npm package
+    </a>
+  </header>
+
+  <section class="demo__workspace" aria-label="Image cropper demo workspace">
+    <form class="demo__controls" data-agent-form="cropper-controls">
+      <label>
+        Image
+        <input
+          type="file"
+          accept="image/*"
+          data-agent-control="image-file"
+          (change)="handleFileSelected($event)"
+        />
+      </label>
+
+      <label>
+        Aspect ratio
+        <select
+          data-agent-control="aspect-ratio"
+          [value]="aspectRatio()"
+          (change)="setAspectRatio($any($event.target).value)"
+        >
+          <option value="1">1:1</option>
+          <option value="1.3333333333">4:3</option>
+          <option value="1.7777777778">16:9</option>
+        </select>
+      </label>
+
+      <label class="demo__check">
+        <input
+          type="checkbox"
+          data-agent-control="circular-crop"
+          [checked]="circularCrop()"
+          (change)="circularCrop.set($any($event.target).checked)"
+        />
+        Circle
+      </label>
+
+      <label>
+        Zoom
+        <input
+          type="range"
+          min="1"
+          max="5"
+          step="0.25"
+          data-agent-control="zoom"
+          [value]="zoom()"
+          (input)="setZoom($any($event.target).value)"
+        />
+      </label>
+    </form>
+
+    <ngx-smart-image-cropper
+      [imageUrl]="imageUrl()"
+      [aspectRatio]="aspectRatio()"
+      [circularCrop]="circularCrop()"
+      [zoom]="zoom()"
+      (cropChanged)="handleCropChanged($event)"
+      (cropped)="handleCropped($event)"
+    />
+
+    <aside class="demo__status" aria-label="Crop status" data-agent-panel="crop-status">
+      <h2>Crop state</h2>
+      @if (lastCrop(); as crop) {
+        <dl>
+          <div>
+            <dt>X</dt>
+            <dd>{{ crop.state.crop.x }}</dd>
+          </div>
+          <div>
+            <dt>Y</dt>
+            <dd>{{ crop.state.crop.y }}</dd>
+          </div>
+          <div>
+            <dt>Size</dt>
+            <dd>{{ crop.state.crop.width }} x {{ crop.state.crop.height }}</dd>
+          </div>
+          <div>
+            <dt>Zoom</dt>
+            <dd>{{ crop.state.zoom }}</dd>
+          </div>
+        </dl>
+      } @else {
+        <p>No crop changes yet.</p>
+      }
+
+      @if (exportUrl(); as url) {
+        <a [href]="url" download="cropped-image.png">Download export</a>
+      }
+    </aside>
+  </section>
+</main>
